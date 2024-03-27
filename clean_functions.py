@@ -5,6 +5,7 @@ import pathlib
 import datetime
 import sys
 
+#TODO Add _old functionality for folders and/or files
 
 def _get_version(
     filename,
@@ -52,12 +53,6 @@ def _find_folder_containing_files_recursively(folderpath, extensions):
                     print(f"DEBUG - Files found in {root}")
                     directories_list.append(root)
     return directories_list
-
-def _remove_file(filepath):
-    return
-
-def _zip_folder(filepath):
-    return
 
 def clean_folder(
         folderpath,
@@ -122,6 +117,7 @@ def clean_folder(
     # Print informations
     total_size = total_size*0.00000125 # Convert to Mo
     print()
+    #TODO Recap args utilisés
     print(f"DEBUG - {len(files_to_remove)} files removed")
     print(f"DEBUG - {total_size} Mo freed")
 
@@ -140,6 +136,9 @@ def _print_help():
     print("-a               Archive folder (-a folderpath)")
     print("-n               No archive compression")
     print("-p               Regex version pattern to look for (-p pattern)")
+
+
+### PROCESS
 
 # cmd folderpath -d -v 5 -e blend,blend1 -a folder -n -h
 
@@ -181,6 +180,9 @@ for i in range(len(sys.argv)):
         archive_folder = sys.argv[i+1]
     elif sys.argv[i]=="-p":
         version_pattern = sys.argv[i+1]
+
+#TODO Recap args utilisés
+#TODO Confirmation utilisateur.ice si pas dry run
 
 files = clean_folder(
         folderpath, # Folder to clean
