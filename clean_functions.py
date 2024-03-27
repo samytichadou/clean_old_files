@@ -160,19 +160,19 @@ version_pattern = r"_v[0-9][0-9][0-9]"
 
 folderpath = sys.argv[1]
 for i in range(len(sys.argv)):
-    if sys.argv=="-d":
+    if sys.argv[i]=="-d":
         dry_run = True
-    elif sys.argv=="-nozip":
+    elif sys.argv[i]=="-nozip":
         zip = False
-    elif sys.argv=="-v":
+    elif sys.argv[i]=="-v":
         versions = sys.argv[i+1]
-    elif sys.argv=="-e":
+    elif sys.argv[i]=="-e":
         extensions = []
         for ext in sys.argv[i+1].split(","):
             extensions.append(f".{ext}")
-    elif sys.argv=="-a":
+    elif sys.argv[i]=="-a":
         archive_folder = sys.argv[i+1]
-    elif sys.argv=="-p":
+    elif sys.argv[i]=="-p":
         version_pattern = sys.argv[i+1]
 
 files = clean_folder(
