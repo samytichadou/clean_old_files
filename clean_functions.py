@@ -165,7 +165,7 @@ for i in range(len(sys.argv)):
     elif sys.argv[i]=="-nozip":
         zip = False
     elif sys.argv[i]=="-v":
-        versions = sys.argv[i+1]
+        versions = int(sys.argv[i+1])
     elif sys.argv[i]=="-e":
         extensions = []
         for ext in sys.argv[i+1].split(","):
