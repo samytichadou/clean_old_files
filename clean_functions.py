@@ -127,16 +127,8 @@ def clean_folder(
 
     return files_to_remove
 
-# cmd folderpath -d -v 5 -e blend,blend1 -a folder -nozip -h
-
-
-if not len(sys.argv)>1:
-    print("Missing argument, -h for help")
-    exit()
-elif sys.argv[1]!="-h" and not os.path.isdir(sys.argv[1]):
-    print("Missing folderpath, -h for help")
-    exit()
-elif sys.argv[1]=="-h":
+def _print_help():
+    print()
     print("Help")
     print()
     print("Command : python clean_old_files.py folderpath_to_clean arguments")
@@ -148,6 +140,21 @@ elif sys.argv[1]=="-h":
     print("-a               Archive folder (-a folderpath)")
     print("-n               No archive compression")
     print("-p               Regex version pattern to look for (-p pattern)")
+
+# cmd folderpath -d -v 5 -e blend,blend1 -a folder -n -h
+
+if len(sys.argv)<=1:
+    print()
+    print("Missing argument, -h for help")
+    _print_help()
+    exit()
+elif sys.argv[1]!="-h" and not os.path.isdir(sys.argv[1]):
+    print()
+    print("Missing folderpath, -h for help")
+    _print_help()
+    exit()
+elif sys.argv[1]=="-h":
+    _print_help()
     exit()
 
 # Parse arguments
