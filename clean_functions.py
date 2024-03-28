@@ -156,26 +156,12 @@ def clean_files(
         archive_name = f"archivedfiles_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
         archive_path = os.path.join(archive_folder, archive_name)
 
-    # Process files
-    for filepath in files_to_remove:
-
-        if archive_folder:
-            # Get archive filepath
-            p = pathlib.Path(filepath)
-            dest = os.path.join(archive_path, pathlib.Path(*p.parts[2:]))
-            # Create folders if needed
-            if not os.path.isdir(os.path.dirname(dest)):
-                os.makedirs(os.path.dirname(dest))
-            # Copy file
-            if debug: print(f"DEBUG - Moving {filepath} to {dest}")
-            shutil.move(filepath, dest)
-        else:
-            # Remove file
-            if debug: print(f"DEBUG - Removing {filepath}")
-            os.remove(filepath)
-
     # Process folders
     for folderpath in folders_to_remove:
+
+        # Check if filepath is still existing
+        if not os.path.isdir(folderpath):
+            continue
 
         if archive_folder:
             # Get archive filepath
@@ -191,6 +177,28 @@ def clean_files(
             # Remove folder
             if debug: print(f"DEBUG - Removing {folderpath}")
             shutil.rmtree(folderpath)
+
+    # Process files
+    for filepath in files_to_remove:
+
+        # Check if filepath is still existing
+        if not os.path.isfile(filepath):
+            continue
+
+        if archive_folder:
+            # Get archive filepath
+            p = pathlib.Path(filepath)
+            dest = os.path.join(archive_path, pathlib.Path(*p.parts[2:]))
+            # Create folders if needed
+            if not os.path.isdir(os.path.dirname(dest)):
+                os.makedirs(os.path.dirname(dest))
+            # Copy file
+            if debug: print(f"DEBUG - Moving {filepath} to {dest}")
+            shutil.move(filepath, dest)
+        else:
+            # Remove file
+            if debug: print(f"DEBUG - Removing {filepath}")
+            os.remove(filepath)
 
     # Zip archive if needed
     if archive_folder and archive_compression:
