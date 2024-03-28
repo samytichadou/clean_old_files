@@ -1,3 +1,9 @@
+# USAGE
+
+# Command Example
+# cmd folderpath -v 5 -e blend,blend1 -a archivefolder -n
+
+
 import os
 import re
 import shutil
@@ -84,6 +90,7 @@ def _find_old_files(
 
     # Print informations
     total_size = total_size*0.00000125 # Convert to Mo
+    print()
     print(f"DEBUG - {len(files_to_remove)} files to remove")
     print(f"DEBUG - {total_size} Mo will be freed")
 
@@ -145,8 +152,7 @@ def _print_help():
 
 ### PROCESS
 
-# cmd folderpath -d -v 5 -e blend,blend1 -a folder -n -h
-
+# Catch wrong command
 if len(sys.argv)<=1:
     print()
     print("Missing argument, -h for help")
@@ -157,18 +163,20 @@ elif sys.argv[1]!="-h" and not os.path.isdir(sys.argv[1]):
     print("Missing folderpath, -h for help")
     _print_help()
     exit()
-elif sys.argv[1]=="-h" or sys.argv[2]=="-h":
+# Help argument
+elif "-h" in sys.argv:
     _print_help()
     exit()
 
-# Parse arguments
+# Default arguments
 dry_run = False
 versions = 5
 extensions = [".blend", ".blend1", ".blend2", ".blend3"]
-archive_folder = ""
+archive_folder = None
 zip = True
 version_pattern = r"_v[0-9][0-9][0-9]"
 
+# Parse arguments
 folderpath = sys.argv[1]
 for i in range(len(sys.argv)):
     if sys.argv[i]=="-n":
@@ -184,8 +192,7 @@ for i in range(len(sys.argv)):
     elif sys.argv[i]=="-p":
         version_pattern = sys.argv[i+1]
 
-#TODO Recap args utilisés
-
+# Get files to process
 files = _find_old_files(
     folderpath,
     extensions,
@@ -193,14 +200,26 @@ files = _find_old_files(
     version_pattern,
     )
 
+# Arguments used
+print(f"DEBUG - Folder to search :      {folderpath}")
+print(f"DEBUG - File extensions :       {extensions}")
+print(f"DEBUG - Versions to keep :      {versions}")
+print(f"DEBUG - Version pattern :       {version_pattern}")
+print(f"DEBUG - Archive folder :        {archive_folder}")
+print(f"DEBUG - Archive compression :   {zip}")
+
+# Abort if no files found
 if not len(files):
+    print("Aborting")
     exit()
 
-confirmation = input("Are you sure ? Type yes to start : ")
+# User confirmation
+confirmation = input("Are you sure ? Type yes/y to start : ")
 if not confirmation.lower() in {"y","yes"}:
     print("Aborting")
     exit()
 
+# Process files
 clean_files(
     files,
     archive_folder,
