@@ -1,7 +1,7 @@
 # USAGE
 
 # Command Example
-# cmd folderpath -v 5 -e blend,blend1 -a archivefolder -n
+# cmd folderpath -v 5 -e blend,blend1 -a archivefolder -n -p _v[0-9][0-9][0-9] -o -l _old,_bin -y -d
 
 
 import os
@@ -28,13 +28,25 @@ def _find_old_files_in_folder(
         extensions,
         versions_to_keep,
         version_pattern,
-):
+        remove_old_patterns,
+        old_patterns,
+    ):
     old_files_list = []
     total_size = 0
 
     for extension in extensions:
         file_list = []
+
         for file in os.listdir(folderpath):
+
+            # Get old file with old patterns
+            if remove_old_patterns:
+                for pattern in old_patterns:
+                    if pattern in file:
+                        file_list.append((file, _get_version(name, version_pattern)))
+                        continue
+
+            # Get old file with extension
             name, ext = os.path.splitext(file)
             if ext==extension:
                 file_list.append((file, _get_version(name, version_pattern)))
@@ -53,29 +65,61 @@ def _find_old_files_in_folder(
 
     return old_files_list, total_size
 
-def _find_folder_containing_files_recursively(folderpath, extensions):
+def _find_folder_to_process_recursively(
+    folderpath,
+    extensions,
+    remove_old_patterns,
+    old_patterns,
+    debug,
+    ):
     directories_list = []
+    old_directories_list = []
+
     for root, subfolders, files in os.walk(folderpath):
+
+        # Find dirs containing old pattern
+        for sub in subfolders:
+            if remove_old_patterns:
+                for pattern in old_patterns:
+                    if pattern in sub:
+                        old_directories_list.append(os.path.join(root, sub))
+
+        # Find dirs containing files with extension
         for name in files:
             if os.path.splitext(name)[1] in extensions:
                 if root not in directories_list:
-                    print(f"DEBUG - Files found in {root}")
+                    if debug: print(f"DEBUG - Files found in {root}")
                     directories_list.append(root)
-    return directories_list
+
+    return directories_list, old_directories_list
 
 def _find_old_files(
         folderpath,
         extensions,
         versions_to_keep,
         version_pattern,
+        remove_old_patterns,
+        old_patterns,
+        debug,
 ):
     total_size = 0
 
     # Get subfolders
-    subfolders =  _find_folder_containing_files_recursively(
+    subfolders, old_subfolders =  _find_folder_to_process_recursively(
         folderpath,
         extensions,
+        remove_old_patterns,
+        old_patterns,
+        debug,
     )
+
+    # Get old subfolders informations
+    old_files_number = 0
+    for sub in old_subfolders:
+        for file in os.listdir(sub):
+            old_files_number += 1
+            total_size += os.path.getsize(os.path.join(sub, file))
+
     # Get old files
     files_to_remove = []
     for subfolder in subfolders:
@@ -84,6 +128,8 @@ def _find_old_files(
                 extensions,
                 versions_to_keep,
                 version_pattern,
+                remove_old_patterns,
+                old_patterns,
         )
         files_to_remove.extend(files)
         total_size += size
@@ -91,16 +137,20 @@ def _find_old_files(
     # Print informations
     total_size = total_size*0.00000125 # Convert to Mo
     print()
-    print(f"DEBUG - {len(files_to_remove)} files to remove")
-    print(f"DEBUG - {total_size} Mo will be freed")
+    print(f"{len(old_subfolders)} old folders to remove")
+    print(f"{len(files_to_remove) + old_files_number} files to remove")
+    print(f"{total_size} Mo will be freed")
+    print()
 
-    return files_to_remove
+    return files_to_remove, old_subfolders
 
 def clean_files(
         files_to_remove,
+        folders_to_remove,
         archive_folder,
         archive_compression,
-):
+        debug,
+    ):
     # Get archive folder path if needed
     if archive_folder:
         archive_name = f"archivedfiles_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -117,12 +167,30 @@ def clean_files(
             if not os.path.isdir(os.path.dirname(dest)):
                 os.makedirs(os.path.dirname(dest))
             # Copy file
-            print(f"DEBUG - Moving {filepath} to {dest}")
+            if debug: print(f"DEBUG - Moving {filepath} to {dest}")
             shutil.move(filepath, dest)
         else:
             # Remove file
-            print(f"DEBUG - Removing {filepath}")
+            if debug: print(f"DEBUG - Removing {filepath}")
             os.remove(filepath)
+
+    # Process folders
+    for folderpath in folders_to_remove:
+
+        if archive_folder:
+            # Get archive filepath
+            p = pathlib.Path(folderpath)
+            dest = os.path.dirname(os.path.join(archive_path, pathlib.Path(*p.parts[2:])))
+            # Create folders if needed
+            if not os.path.isdir(dest):
+                os.makedirs(dest)
+            # Copy folder
+            if debug: print(f"DEBUG - Moving {folderpath} to {dest}")
+            shutil.move(folderpath, dest)
+        else:
+            # Remove folder
+            if debug: print(f"DEBUG - Removing {folderpath}")
+            shutil.rmtree(folderpath)
 
     # Zip archive if needed
     if archive_folder and archive_compression:
@@ -132,7 +200,9 @@ def clean_files(
         shutil.rmtree(archive_path)
 
     # Print informations
-    print(f"DEBUG - {len(files_to_remove)} files removed")
+    print()
+    print(f"{len(folders_to_remove)} old folders removed")
+    print(f"{len(files_to_remove)} files removed")
 
     return files_to_remove
 
@@ -147,8 +217,14 @@ def _print_help():
     print("-e               File extensions to search, comma separated (-e ext1,ext2)")
     print("-a               Archive folder (-a folderpath)")
     print("-n               No archive compression")
-    print("-p               Regex version pattern to look for (-p pattern)")
-
+    print("-p               Regex version pattern to look for. _v[0-9][0-9][0-9] by default (-p pattern)")
+    print("-o               Remove old files and folders according to old pattern list")
+    print("-l               Old pattern list, comma separated. _old, old_ by default (-l _pat1,pat2)")
+    print("-y               Do not ask for user confirmation")
+    print("-d               Debug mode")
+    print()
+    print("Command example")
+    print(r"python clean_old_files.py folderpath -v 5 -e blend,blend1 -a archivefolder -n -p _v[0-9][0-9][0-9] -o -l _old,_bin -y -d")
 
 ### PROCESS
 
@@ -175,6 +251,10 @@ extensions = [".blend", ".blend1", ".blend2", ".blend3"]
 archive_folder = None
 zip = True
 version_pattern = r"_v[0-9][0-9][0-9]"
+remove_old_patterns = False
+old_patterns = [r"_old", r"old_"]
+no_user_confirmation = False
+debug = False
 
 # Parse arguments
 folderpath = sys.argv[1]
@@ -191,37 +271,58 @@ for i in range(len(sys.argv)):
         archive_folder = sys.argv[i+1]
     elif sys.argv[i]=="-p":
         version_pattern = sys.argv[i+1]
+    elif sys.argv[i]=="-o":
+        remove_old_patterns = True
+    elif sys.argv[i]=="-l":
+        old_patterns = []
+        for pat in sys.argv[i+1].split(","):
+            old_patterns.append(f".{pat}")
+    elif sys.argv[i]=="-y":
+        no_user_confirmation = True
+    elif sys.argv[i]=="-d":
+        debug = True
+
+# Arguments used
+print()
+print(f"Folder to search :      {folderpath}")
+print(f"File extensions :       {extensions}")
+print(f"Versions to keep :      {versions}")
+print(f"Version pattern :       {version_pattern}")
+print(f"Archive folder :        {archive_folder}")
+print(f"Archive compression :   {zip}")
+print(f"Remove old patterns :   {remove_old_patterns}")
+print(f"Old patterns :          {old_patterns}")
+print(f"No user confirmation :  {no_user_confirmation}")
+print()
 
 # Get files to process
-files = _find_old_files(
+files, folders = _find_old_files(
     folderpath,
     extensions,
     versions,
     version_pattern,
+    remove_old_patterns,
+    old_patterns,
+    debug,
     )
 
-# Arguments used
-print(f"DEBUG - Folder to search :      {folderpath}")
-print(f"DEBUG - File extensions :       {extensions}")
-print(f"DEBUG - Versions to keep :      {versions}")
-print(f"DEBUG - Version pattern :       {version_pattern}")
-print(f"DEBUG - Archive folder :        {archive_folder}")
-print(f"DEBUG - Archive compression :   {zip}")
-
 # Abort if no files found
-if not len(files):
+if not len(files) and not len(folders):
     print("Aborting")
     exit()
 
 # User confirmation
-confirmation = input("Are you sure ? Type yes/y to start : ")
-if not confirmation.lower() in {"y","yes"}:
-    print("Aborting")
-    exit()
+if not no_user_confirmation:
+    confirmation = input("Are you sure ? Type yes/y to start : ")
+    if not confirmation.lower() in {"y","yes"}:
+        print("Aborting")
+        exit()
 
 # Process files
 clean_files(
     files,
+    folders,
     archive_folder,
     zip,
+    debug,
     )
