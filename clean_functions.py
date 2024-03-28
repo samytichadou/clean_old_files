@@ -11,8 +11,6 @@ import pathlib
 import datetime
 import sys
 
-#TODO Add _old functionality for folders and/or files
-
 def _get_version(
     filename,
     pattern,
@@ -30,6 +28,7 @@ def _find_old_files_in_folder(
         version_pattern,
         remove_old_patterns,
         old_patterns,
+        debug,
     ):
     old_files_list = []
     total_size = 0
@@ -38,6 +37,7 @@ def _find_old_files_in_folder(
         file_list = []
 
         for file in os.listdir(folderpath):
+            name, ext = os.path.splitext(file)
 
             # Get old file with old patterns
             if remove_old_patterns:
@@ -47,15 +47,14 @@ def _find_old_files_in_folder(
                         continue
 
             # Get old file with extension
-            name, ext = os.path.splitext(file)
             if ext==extension:
                 file_list.append((file, _get_version(name, version_pattern)))
 
         try:
             file_list.sort(reverse=True, key=lambda a: a[1])
         except TypeError:
-            print("DEBUG - Unable to find file version")
-            return []
+            if debug: print(f"DEBUG - Unable to find file versions for {extension}")
+            break
 
         for k in range(0, len(file_list)):
             if k>=versions_to_keep:
@@ -130,6 +129,7 @@ def _find_old_files(
                 version_pattern,
                 remove_old_patterns,
                 old_patterns,
+                debug,
         )
         files_to_remove.extend(files)
         total_size += size
@@ -229,7 +229,7 @@ def _print_help():
     print("-d               Debug mode")
     print()
     print("Command example")
-    print(r"python clean_old_files.py folderpath -v 5 -e blend,blend1 -a archivefolder -n -p _v[0-9][0-9][0-9] -o -l _old,_bin -y -d")
+    print(r"python clean_old_files.py folderpath -v 5 -e blend,blend1 -a archivefolder -n -p _v[0-9][0-9][0-9] -o -l _old,_bin -d")
     print()
 
 ### PROCESS
@@ -238,12 +238,10 @@ def _print_help():
 if len(sys.argv)<=1:
     print()
     print("Missing argument, -h for help")
-    _print_help()
     exit()
 elif sys.argv[1]!="-h" and not os.path.isdir(sys.argv[1]):
     print()
     print("Missing folderpath, -h for help")
-    _print_help()
     exit()
 # Help argument
 elif "-h" in sys.argv:
