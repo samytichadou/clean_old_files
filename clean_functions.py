@@ -17,13 +17,14 @@ def _get_version(
     else:
         return None
 
-def _find_old_files(
+def _find_old_files_in_folder(
         folderpath,
         extensions,
         versions_to_keep,
         version_pattern,
 ):
     old_files_list = []
+    total_size = 0
 
     for extension in extensions:
         file_list = []
@@ -40,9 +41,11 @@ def _find_old_files(
 
         for k in range(0, len(file_list)):
             if k>=versions_to_keep:
-                old_files_list.append(os.path.join(folderpath, file_list[k][0]))
+                filepath = os.path.join(folderpath, file_list[k][0])
+                old_files_list.append(filepath)
+                total_size += os.path.getsize(filepath)
 
-    return old_files_list
+    return old_files_list, total_size
 
 def _find_folder_containing_files_recursively(folderpath, extensions):
     directories_list = []
@@ -54,72 +57,75 @@ def _find_folder_containing_files_recursively(folderpath, extensions):
                     directories_list.append(root)
     return directories_list
 
-def clean_folder(
+def _find_old_files(
         folderpath,
         extensions,
         versions_to_keep,
-        dry_run,
-        archive_folder,
-        archive_compression,
         version_pattern,
 ):
+    total_size = 0
+
+    # Get subfolders
     subfolders =  _find_folder_containing_files_recursively(
         folderpath,
         extensions,
     )
-
-    # Get file list to remove
+    # Get old files
     files_to_remove = []
     for subfolder in subfolders:
-        files_to_remove.extend(
-            _find_old_files(
+        files, size = _find_old_files_in_folder(
                 subfolder,
                 extensions,
                 versions_to_keep,
                 version_pattern,
-            )
         )
+        files_to_remove.extend(files)
+        total_size += size
 
+    # Print informations
+    total_size = total_size*0.00000125 # Convert to Mo
+    print(f"DEBUG - {len(files_to_remove)} files to remove")
+    print(f"DEBUG - {total_size} Mo will be freed")
+
+    return files_to_remove
+
+def clean_files(
+        files_to_remove,
+        archive_folder,
+        archive_compression,
+):
     # Get archive folder path if needed
     if archive_folder:
         archive_name = f"archivedfiles_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
         archive_path = os.path.join(archive_folder, archive_name)
 
     # Process files
-    total_size = 0
     for filepath in files_to_remove:
-        total_size += os.path.getsize(filepath)
 
-        if not dry_run:
-            if archive_folder:
-                # Get archive filepath
-                p = pathlib.Path(filepath)
-                dest = os.path.join(archive_path, pathlib.Path(*p.parts[2:]))
-                # Create folders if needed
-                if not os.path.isdir(os.path.dirname(dest)):
-                    os.makedirs(os.path.dirname(dest))
-                # Copy file
-                print(f"DEBUG - Moving {filepath} to {dest}")
-                shutil.move(filepath, dest)
-            else:
-                # Remove file
-                print(f"DEBUG - Removing {filepath}")
-                os.remove(filepath)
+        if archive_folder:
+            # Get archive filepath
+            p = pathlib.Path(filepath)
+            dest = os.path.join(archive_path, pathlib.Path(*p.parts[2:]))
+            # Create folders if needed
+            if not os.path.isdir(os.path.dirname(dest)):
+                os.makedirs(os.path.dirname(dest))
+            # Copy file
+            print(f"DEBUG - Moving {filepath} to {dest}")
+            shutil.move(filepath, dest)
+        else:
+            # Remove file
+            print(f"DEBUG - Removing {filepath}")
+            os.remove(filepath)
 
     # Zip archive if needed
-    if archive_folder and archive_compression and not dry_run:
+    if archive_folder and archive_compression:
         # Zip folder
         shutil.make_archive(archive_path, 'zip', archive_path)
         # Remove archive folder
         shutil.rmtree(archive_path)
 
-
     # Print informations
-    total_size = total_size*0.00000125 # Convert to Mo
-    print()
-    #TODO Recap args utilisés
     print(f"DEBUG - {len(files_to_remove)} files removed")
-    print(f"DEBUG - {total_size} Mo freed")
 
     return files_to_remove
 
@@ -130,7 +136,6 @@ def _print_help():
     print("Command : python clean_old_files.py folderpath_to_clean arguments")
     print()
     print("-h               Help")
-    print("-d               Dry Run mode")
     print("-v               Versions to keep (-v 5)")
     print("-e               File extensions to search, comma separated (-e ext1,ext2)")
     print("-a               Archive folder (-a folderpath)")
@@ -152,7 +157,7 @@ elif sys.argv[1]!="-h" and not os.path.isdir(sys.argv[1]):
     print("Missing folderpath, -h for help")
     _print_help()
     exit()
-elif sys.argv[1]=="-h":
+elif sys.argv[1]=="-h" or sys.argv[2]=="-h":
     _print_help()
     exit()
 
@@ -166,9 +171,7 @@ version_pattern = r"_v[0-9][0-9][0-9]"
 
 folderpath = sys.argv[1]
 for i in range(len(sys.argv)):
-    if sys.argv[i]=="-d":
-        dry_run = True
-    elif sys.argv[i]=="-nozip":
+    if sys.argv[i]=="-n":
         zip = False
     elif sys.argv[i]=="-v":
         versions = int(sys.argv[i+1])
@@ -182,14 +185,24 @@ for i in range(len(sys.argv)):
         version_pattern = sys.argv[i+1]
 
 #TODO Recap args utilisés
-#TODO Confirmation utilisateur.ice si pas dry run
 
-files = clean_folder(
-        folderpath, # Folder to clean
-        extensions, # Extensions to clean
-        versions, # Versions to keep
-        dry_run, # DryRun
-        archive_folder, # Archive folder (no archive if empty)
-        zip, # Compress archive
-        version_pattern, # Version Pattern
+files = _find_old_files(
+    folderpath,
+    extensions,
+    versions,
+    version_pattern,
+    )
+
+if not len(files):
+    exit()
+
+confirmation = input("Are you sure ? Type yes to start : ")
+if not confirmation.lower() in {"y","yes"}:
+    print("Aborting")
+    exit()
+
+clean_files(
+    files,
+    archive_folder,
+    zip,
     )
