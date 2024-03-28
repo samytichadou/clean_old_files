@@ -251,7 +251,6 @@ elif "-h" in sys.argv:
     exit()
 
 # Default arguments
-dry_run = False
 versions = 5
 extensions = [".blend", ".blend1", ".blend2", ".blend3"]
 archive_folder = None
