@@ -1,4 +1,4 @@
-# clean_old_files
+# Clean Old Files
 
 This simple python script is a CLI utility to clean old files on every type of project which uses file versioning.
 
@@ -14,12 +14,12 @@ The command has this form :
 
 Here are available arguments :
 - `-h` : Help
-- `-v` : Number of versions to keep (ex : -v 5)
-- `-p` : Regex version pattern to look for. "_v[0-9][0-9][0-9]" by default (ex : -p regex_pattern)
-- `-e` : File extensions to search, comma separated (-e ext1,ext2)
-- `-a` : Archive folder (-a archive_folderpath)
+- `-v` : Number of versions to keep (ex : `-v 5`)
+- `-p` : Regex version pattern to look for. `_v[0-9][0-9][0-9]` by default (ex : `-p regex_pattern`)
+- `-e` : File extensions to search, comma separated (`-e ext1,ext2`)
+- `-a` : Archive folder (`-a archive_folderpath`)
 - `-n` : No archive compression, archive is compressed by default
 - `-o` : Remove old files and folders according to old pattern list
-- `-l` : Old pattern list, comma separated. "_old", "old_" by default (-l _pat1,pat2)
+- `-l` : Old pattern list, comma separated. `_old`,  `old_` by default (`-l pattern1,pattern2`)
 - `-y` : Do not ask for user confirmation
 - `-d` : Debug mode
